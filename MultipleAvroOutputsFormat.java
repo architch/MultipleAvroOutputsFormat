@@ -22,19 +22,24 @@ public class MultipleAvroOutputsFormat<K,V> extends OutputFormat<Tuple2<String,K
 
     @Override
     public RecordWriter<Tuple2<String, K>, V> getRecordWriter(TaskAttemptContext context) throws IOException, InterruptedException {
+        Job job = Job.getInstance(context.getConfiguration());
+        job.setOutputFormatClass(outputFormat.getClass());
+        ReduceContextImpl ioContext = new ReduceContextImpl(job.getConfiguration(),context.getTaskAttemptID(),
+                new DummyIterator(), new GenericCounter(), new GenericCounter(),
+                new DummyRecordWriter(), new DummyOutputCommitter(), new DummyReporter(), null,
+                NullWritable.class, NullWritable.class);
+        AvroMultipleOutputs avroMultipleOutputs = new AvroMultipleOutputs(ioContext);
+        
         return new RecordWriter<Tuple2<String, K>, V>() {
-            private Job job = Job.getInstance(context.getConfiguration());
-
-            private ReduceContextImpl ioContext = new ReduceContextImpl(job.getConfiguration(),context.getTaskAttemptID(),
-                    new DummyIterator(), new GenericCounter(), new GenericCounter(),
-                    new DummyRecordWriter(), new DummyOutputCommitter(), new DummyReporter(), null,
-                    NullWritable.class, NullWritable.class);
-            private AvroMultipleOutputs avroMultipleOutputs = new AvroMultipleOutputs(ioContext);
-
             @Override
             public void write(Tuple2<String, K> stringKTuple2, V v) throws IOException, InterruptedException {
                 avroMultipleOutputs.write(stringKTuple2._1,stringKTuple2._2,v);
             }
+//          Use this function to write to a different directory by providing the basepath directly.
+//          @Override
+//          public void write(Tuple2<String, K> outputPathAndKey, V value) throws IOException, InterruptedException {
+//              avroMultipleOutputs.write(outputPathAndKey._2,value,outputPathAndKey._1);
+//          }
 
             @Override
             public void close(TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
